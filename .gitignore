@@ -1,0 +1,41 @@
+# ── Python ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+.venv/
+venv/
+env/
+
+# ── 运行时输出（不入库） ─────────────────────────────
+output/
+runtime/
+
+# ── 临时文件 ─────────────────────────────────────────
+*.tmp
+*.bak
+*.swp
+*~
+
+# ── 编辑器 / IDE ─────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
+
+# ── WorkBuddy / CodeBuddy 工作区内部文件（不入库） ───
+.workbuddy/
+.codebuddy/
+
+# ── 系统文件 ─────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store

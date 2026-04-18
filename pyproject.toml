@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atc-data-hub-python"
+version = "0.1.0"
+description = "ATC Data Hub server rewritten in Python"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  { name = "WorkBuddy / 阿塔" }
+]
+dependencies = []
+
+[project.scripts]
+atc-data-hub = "atc_data_hub.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["atc_data_hub*"]
+
