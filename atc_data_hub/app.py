@@ -37,18 +37,37 @@ class ProtectorApplication:
         # Build terminal area from config (optional)
         ta_cfg = config.terminal_area
         terminal_area: TerminalArea | None = None
-        if ta_cfg.fdrg_path and ta_cfg.fdrg_path.exists():
+        if ta_cfg.json_path and ta_cfg.json_path.exists():
+            try:
+                terminal_area = TerminalArea.from_json(
+                    ta_cfg.json_path,
+                    ceiling_m=ta_cfg.ceiling_m,
+                    floor_m=ta_cfg.floor_m,
+                    airports=ta_cfg.airports,
+                )
+                self.logger.info(
+                    "terminal area loaded from JSON: %d vertices, ceiling=%.0fm, floor=%.0fm, airports=%s",
+                    len(terminal_area._vertices),
+                    terminal_area.ceiling_m,
+                    terminal_area.floor_m,
+                    terminal_area.airports,
+                )
+            except Exception as exc:  # noqa: BLE001
+                self.logger.warning("failed to load terminal area from JSON: %s", exc)
+        elif ta_cfg.fdrg_path and ta_cfg.fdrg_path.exists():
             try:
                 terminal_area = TerminalArea.from_fdrg(
                     ta_cfg.fdrg_path,
                     ceiling_m=ta_cfg.ceiling_m,
+                    floor_m=ta_cfg.floor_m,
                     airports=ta_cfg.airports,
                 )
                 self.logger.info(
-                    "terminal area loaded: %d vertices, ceiling=%.0fm, airports=%s",
+                    "terminal area loaded from FDRG.txt: %d vertices, ceiling=%.0fm, floor=%.0fm, airports=%s",
                     len(terminal_area._vertices),
-                    ta_cfg.ceiling_m,
-                    ta_cfg.airports,
+                    terminal_area.ceiling_m,
+                    terminal_area.floor_m,
+                    terminal_area.airports,
                 )
             except Exception as exc:  # noqa: BLE001
                 self.logger.warning("failed to load terminal area: %s", exc)

@@ -70,9 +70,13 @@
   },
 
   "terminal_area": {
+    "json_path": "FDRG.json",
+    "_comment_json_path": "终端区 JSON 定义文件（顶点、高度范围、机场列表），相对路径相对于 config/ 目录解析。",
     "fdrg_path": "FDRG.txt",
-    "_comment_fdrg_path": "相对路径相对于 config/ 目录解析；FDRG.txt 格式见文件内注释。",
-    "ceiling_m": 4500,
+    "_comment_fdrg_path": "（后备）旧版 FDRG.txt 多边形文件，仅当 json_path 不存在或加载失败时使用。",
+    "ceiling_m": 4800,
+    "floor_m": 0,
+    "_comment_altitude": "垂直高度范围（米），ceiling_m 为上限，floor_m 为下限。",
     "airports": ["ZGSZ", "ZGSD", "VMMC", "ZGNT", "ZGUH"],
     "_comment_airports": "终端区内机场四字码。也可在 TerminalAirports.txt 中维护（两者均生效，取并集）。"
   }

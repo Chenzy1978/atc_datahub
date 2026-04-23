@@ -1,6 +1,7 @@
 """Polygon geometry helpers for terminal-area containment checks."""
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Sequence
@@ -55,10 +56,12 @@ class TerminalArea:
         self,
         vertices: Sequence[tuple[float, float]],
         ceiling_m: float = 4500.0,
+        floor_m: float = 0.0,
         airports: frozenset[str] | None = None,
     ) -> None:
         self._vertices: list[tuple[float, float]] = list(vertices)
         self.ceiling_m = ceiling_m
+        self.floor_m = floor_m
         self.airports: frozenset[str] = airports or frozenset()
 
     # ------------------------------------------------------------------
@@ -84,8 +87,8 @@ class TerminalArea:
         return inside
 
     def inside(self, lat: float, lon: float, altitude_m: float) -> bool:
-        """Return True when the point is within both the polygon and altitude ceiling."""
-        if altitude_m > self.ceiling_m:
+        """Return True when the point is within both the polygon and altitude bounds."""
+        if altitude_m < self.floor_m or altitude_m > self.ceiling_m:
             return False
         return self.contains_point(lat, lon)
 
@@ -104,8 +107,47 @@ class TerminalArea:
         cls,
         fdrg_path: str | Path,
         ceiling_m: float = 4500.0,
+        floor_m: float = 0.0,
         airports: Sequence[str] | None = None,
     ) -> "TerminalArea":
+        """Create a TerminalArea from a legacy FDRG.txt polygon file."""
         vertices = parse_fdrg(fdrg_path)
         airport_set = frozenset(a.strip().upper() for a in (airports or []))
-        return cls(vertices, ceiling_m=ceiling_m, airports=airport_set)
+        return cls(vertices, ceiling_m=ceiling_m, floor_m=floor_m, airports=airport_set)
+
+    @classmethod
+    def from_json(
+        cls,
+        json_path: str | Path,
+        ceiling_m: float | None = None,
+        floor_m: float | None = None,
+        airports: Sequence[str] | None = None,
+    ) -> "TerminalArea":
+        """Create a TerminalArea from a JSON configuration file.
+
+        The JSON file should contain:
+            vertices  - list of [lat, lon] decimal-degree pairs
+            ceiling_m - optional vertical ceiling override (metres)
+            floor_m   - optional vertical floor override (metres)
+            airports  - optional list of ICAO airport codes
+
+        Parameters passed to this method take precedence over JSON values.
+        """
+        raw = json.loads(Path(json_path).read_text(encoding="utf-8"))
+        vertices = [
+            (float(lat), float(lon))
+            for lat, lon in raw["vertices"]
+        ]
+        effective_ceiling = ceiling_m if ceiling_m is not None else float(raw.get("ceiling_m", 4500.0))
+        effective_floor = floor_m if floor_m is not None else float(raw.get("floor_m", 0.0))
+
+        json_airports = [a.strip().upper() for a in raw.get("airports", [])]
+        override_airports = [a.strip().upper() for a in (airports or [])]
+        airport_set = frozenset(override_airports or json_airports)
+
+        return cls(
+            vertices,
+            ceiling_m=effective_ceiling,
+            floor_m=effective_floor,
+            airports=airport_set,
+        )

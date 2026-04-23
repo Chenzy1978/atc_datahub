@@ -284,15 +284,18 @@ class AftnParser:
             ata_utc = self._combine_day_hhmm(dof_utc_day, ata_hhmm)
             dof = _beijing_date_from_utc(ata_utc)
         else:
-            # 无 DOF/ 字段：根据 ATA HHMM 判断 UTC 日期基准
+            # 无 DOF/ 字段：根据 ATA HHMM 判断 UTC 日期基准（与 FPL/DEP 统一）
+            #   HHMM >= 1600：UTC 昨日 + HHMM → +8 = 北京今日（或 00:00 次日），
+            #                 执飞日 = base_day。
+            #   HHMM < 1600：UTC 今日 + HHMM → +8 后的北京日期即为执飞日。
             ata_hour = int(ata_hhmm[:2])
             ata_minute = int(ata_hhmm[2:4])
-            if ata_hour > 16 or (ata_hour == 16 and ata_minute > 0):
-                # HHMM > 1600：UTC 昨日 + HHMM → +8 = 北京今日
+            if ata_hour > 16 or (ata_hour == 16 and ata_minute >= 0):
+                # HHMM >= 1600：UTC 昨日 + HHMM → +8 = 北京今日
                 ata_utc = self._combine_day_hhmm(base_day - timedelta(days=1), ata_hhmm)
                 dof = base_day
             else:
-                # HHMM <= 1600：UTC 今日 + HHMM
+                # HHMM < 1600：UTC 今日 + HHMM
                 ata_utc = self._combine_day_hhmm(base_day, ata_hhmm)
                 dof = _beijing_date_from_utc(ata_utc)
         

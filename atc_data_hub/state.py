@@ -534,15 +534,23 @@ class ProtectorState:
 
         # 2. 昨日延误/跨日回退：
         #    DEP: 今日收到起飞报，但昨日有同航班计划且尚无 ATD → 关联到昨日计划
-        #    ARR: 今日收到落地报，但昨日有同航班计划且尚无 ATA → 关联到昨日计划
-        #    dof 保持昨日不变（不修改 plan.dof）
+        #    ARR: 今日收到落地报，但前两日有同航班计划且尚无 ATA → 关联到对应计划
+        #         （ARR 报文可能延迟 1~2 天才到达，需要扩大回退范围）
+        #    dof 保持原计划不变（不修改 plan.dof）
         if action in {"DEP", "ARR"}:
-            yesterday_key = (plan.callsign, plan.adep, plan.adest, plan.dof - timedelta(days=1))
-            fallback = self.flight_plans.get(yesterday_key)
-            if action == "DEP" and fallback is not None and fallback.atd is None:
-                return fallback
-            if action == "ARR" and fallback is not None and fallback.ata is None:
-                return fallback
+            if action == "ARR":
+                # ARR：先查 dof-1，再查 dof-2
+                for lookback in (1, 2):
+                    lookup_key = (plan.callsign, plan.adep, plan.adest, plan.dof - timedelta(days=lookback))
+                    candidate = self.flight_plans.get(lookup_key)
+                    if candidate is not None and candidate.ata is None:
+                        return candidate
+            else:
+                # DEP：只查 dof-1
+                yesterday_key = (plan.callsign, plan.adep, plan.adest, plan.dof - timedelta(days=1))
+                fallback = self.flight_plans.get(yesterday_key)
+                if fallback is not None and fallback.atd is None:
+                    return fallback
 
         return None
 
@@ -646,8 +654,10 @@ class ProtectorState:
         alt = track.flight_level_m or track.qnh_height_m
         lat, lon = track.latitude, track.longitude
         now_in = (
-            abs(lat) > 0.0001 or abs(lon) > 0.0001
-        ) and self.terminal_area.inside(lat, lon, alt)
+            alt > 0
+            and (abs(lat) > 0.0001 or abs(lon) > 0.0001)
+            and self.terminal_area.inside(lat, lon, alt)
+        )
 
         current_time = track.time_of_track or track.received_at or datetime.utcnow()
         prev_enter = self._track_terminal_state.get(track.track_number)

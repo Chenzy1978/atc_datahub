@@ -36,9 +36,11 @@ class TrackRegion:
 
 @dataclass(slots=True)
 class TerminalAreaConfig:
-    fdrg_path: Path | None = None        # path to FDRG.txt polygon file
-    ceiling_m: float = 4500.0            # vertical ceiling in metres
-    airports: list[str] = None           # ICAO codes of airports inside the terminal area
+    json_path: Path | None = None         # path to FDRG.json polygon definition
+    fdrg_path: Path | None = None         # path to legacy FDRG.txt polygon file (fallback)
+    ceiling_m: float = 4500.0             # vertical ceiling in metres
+    floor_m: float = 0.0                  # vertical floor in metres
+    airports: list[str] = None            # ICAO codes of airports inside the terminal area
 
     def __post_init__(self) -> None:
         if self.airports is None:
@@ -163,7 +165,15 @@ def _build_config(raw: dict[str, Any], config_file: Path) -> AppConfig:
     compatibility_raw = raw["compatibility"]
     ta_raw = raw.get("terminal_area", {})
 
-    # Resolve fdrg_path relative to config file's base directory
+    # Resolve fdrg_path / json_path relative to config file's base directory
+    json_path: Path | None = None
+    json_value = ta_raw.get("json_path")
+    if json_value:
+        candidate = Path(json_value)
+        if not candidate.is_absolute():
+            candidate = (config_file.parent / candidate).resolve()
+        json_path = candidate
+
     fdrg_path: Path | None = None
     fdrg_value = ta_raw.get("fdrg_path")
     if fdrg_value:
@@ -200,8 +210,10 @@ def _build_config(raw: dict[str, Any], config_file: Path) -> AppConfig:
             notes=list(compatibility_raw.get("notes", [])),
         ),
         terminal_area=TerminalAreaConfig(
+            json_path=json_path,
             fdrg_path=fdrg_path,
             ceiling_m=float(ta_raw.get("ceiling_m", 4500.0)),
+            floor_m=float(ta_raw.get("floor_m", 0.0)),
             airports=list(ta_raw.get("airports", [])),
         ),
         config_file=config_file,
