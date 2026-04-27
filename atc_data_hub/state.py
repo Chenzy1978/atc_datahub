@@ -105,6 +105,11 @@ class ProtectorState:
         # track_number -> datetime when the track first entered the terminal area
         # in the current "inside" segment; None means currently outside.
         self._track_terminal_state: dict[int, datetime | None] = {}
+        # Set of FlightPlan keys whose terminal data is already finalised (flush done).
+        # Once a key is in this set, _add_terminal_seconds will not accumulate further.
+        # This prevents snapshot-restore followed by re-ingestion of the same track
+        # from double-counting terminal time.
+        self._terminal_locked: set[tuple] = set()
         # DOF dates that have been updated since last persistence
         self.dirty_dofs: set[date] = set()
 
@@ -328,6 +333,13 @@ class ProtectorState:
         for raw in payloads.get("tempFPLN.data", []):
             plan = FlightPlan.from_dict(raw)
             self.flight_plans[plan.key] = plan
+
+        # Lock any plans that already have a terminal_exit_time — they were fully
+        # finalised before the snapshot was taken and must not accumulate further.
+        self._terminal_locked = {
+            key for key, plan in self.flight_plans.items()
+            if plan.terminal_exit_time is not None
+        }
 
         self.aftn_messages = [AftnMessage.from_dict(raw) for raw in payloads.get("tempAFTNMsg.data", [])]
         self.voice_records = [VoiceRecord.from_dict(raw) for raw in payloads.get("voice_records", [])]
@@ -686,11 +698,15 @@ class ProtectorState:
             return False
 
     def _add_terminal_seconds(self, track: RadarTrack, seconds: int) -> None:
-        """Find the best-matching flight plan and add *seconds* to its terminal_time_seconds."""
+        """Find the best-matching flight plan and add *seconds* to its terminal_time_seconds.
+
+        Accumulation is skipped for plans that have already been finalised (locked).
+        This prevents double-counting after a snapshot restore.
+        """
         if seconds <= 0:
             return
         plan = self._find_flight_plan_for_track(track)
-        if plan is not None:
+        if plan is not None and plan.key not in self._terminal_locked:
             plan.terminal_time_seconds += seconds
 
     def _find_flight_plan_for_track(self, track: RadarTrack) -> FlightPlan | None:
@@ -754,6 +770,8 @@ class ProtectorState:
         plan = self._find_flight_plan_for_track(track)
         if plan is not None:
             plan.terminal_exit_time = current_time
+            # Lock this plan so snapshot-restore cannot cause further accumulation
+            self._terminal_locked.add(plan.key)
         self._track_terminal_state[track.track_number] = None
 
     def _capacity_for_sector_hour(self, sector_key: str, hour: int) -> int:
