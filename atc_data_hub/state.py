@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Iterable
 
 from .config import TrackRegion
@@ -724,7 +724,14 @@ class ProtectorState:
         adep = (track.adep or "").strip().upper()
         adst = (track.adst or "").strip().upper()
         track_time = track.time_of_track or track.received_at
-        track_date = track_time.date() if track_time else None
+        # plan.dof is Beijing date; compare against Beijing date of the track time
+        # to avoid cross-midnight mismatch (e.g. 23:59 UTC = next day Beijing).
+        _BEIJING = timezone(timedelta(hours=8))
+        if track_time:
+            aware = track_time if track_time.tzinfo else track_time.replace(tzinfo=timezone.utc)
+            track_date: date | None = aware.astimezone(_BEIJING).date()
+        else:
+            track_date = None
 
         candidates: list[FlightPlan] = []
         for plan in self.flight_plans.values():

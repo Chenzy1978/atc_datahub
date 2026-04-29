@@ -88,6 +88,10 @@ class TerminalArea:
 
     def inside(self, lat: float, lon: float, altitude_m: float) -> bool:
         """Return True when the point is within both the polygon and altitude bounds."""
+        # altitude_m == 0 typically means "field absent / on ground" in CAT062;
+        # treat it as invalid and reject early.
+        if altitude_m <= 0:
+            return False
         if altitude_m < self.floor_m or altitude_m > self.ceiling_m:
             return False
         return self.contains_point(lat, lon)

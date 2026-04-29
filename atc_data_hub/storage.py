@@ -4,7 +4,7 @@ import csv
 import json
 import logging
 import struct
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -89,8 +89,9 @@ class StorageManager:
         self._radar_buffer_count = 0
 
     def radar_file_path(self, moment: datetime) -> Path:
+        beijing = moment + timedelta(hours=8)  # UTC -> Beijing Time (CST)
         suffix = 0 if moment.minute < 30 else 1
-        file_name = f"RD{moment:%y%m%d%H}_{suffix}.rcd"
+        file_name = f"RD{beijing:%y%m%d%H}_{suffix}.rcd"
         return self.radar_root / file_name
 
     def persist_daily_outputs(
