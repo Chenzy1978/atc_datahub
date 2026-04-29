@@ -1,7 +1,7 @@
 {
   "name": "珠海终端管制区",
   "ceiling_m": 4800,
-  "floor_m": 0,
+  "floor_m": 30,
   "airports": ["ZGSZ", "ZGSD", "VMMC", "ZGNT", "ZGUH"],
   "vertices": [
     [22.881667, 113.483333],
