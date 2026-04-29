@@ -38,7 +38,7 @@ class AftnParseResult:
 
 
 class AftnParser:
-    SUPPORTED_TYPES = {"FPL", "DEP", "ARR", "DLA", "CPL", "EST"}
+    SUPPORTED_TYPES = {"FPL", "DEP", "ARR", "DLA", "CPL", "EST", "CNL"}
 
     def __init__(self, reference_data: ReferenceData | None = None) -> None:
         self.reference_data = reference_data or ReferenceData()
@@ -72,6 +72,8 @@ class AftnParser:
                 plan = self._parse_dep_like(core_text, message_time, action="DEP")
             elif detected_type == "DLA":
                 plan = self._parse_dep_like(core_text, message_time, action="DLA")
+            elif detected_type == "CNL":
+                plan = self._parse_cnl(core_text, message_time)
             else:
                 plan = self._parse_arr(core_text, message_time)
             plan.source_message_type = detected_type
@@ -305,6 +307,36 @@ class AftnParser:
             adest=arrival[:4],
             dof=dof,
             ata=ata_utc,
+        )
+        return plan
+
+    def _parse_cnl(self, core_text: str, message_time: datetime) -> FlightPlan:
+        """解析 CNL（取消）报文，只提取航班标识信息用于匹配已有计划。"""
+        fields = self._split_fields(core_text)
+        if len(fields) < 4:
+            raise AftnParseError(f"CNL 报文段数不足: {len(fields)}")
+        callsign, ssr = self._parse_callsign_and_ssr(fields[1])
+        if not callsign:
+            raise AftnParseError("CNL 缺少呼号")
+
+        departure = fields[2].strip().upper()
+        arrival = fields[3].strip().upper()
+
+        # CNL 的 dof 推算与 DEP 相同：HHMM > 1600 时 UTC 日期为前一天
+        base_day = _beijing_date_from_utc(message_time)
+        hhmm = departure[4:8] if len(departure) >= 8 else "0000"
+        h, m = int(hhmm[:2]), int(hhmm[2:4])
+        if h > 16 or (h == 16 and m > 0):
+            dof = base_day
+        else:
+            dof = base_day
+
+        plan = FlightPlan(
+            callsign=callsign,
+            adep=departure[:4] if departure else "",
+            adest=arrival[:4] if arrival else "",
+            ssr=ssr,
+            dof=dof,
         )
         return plan
 

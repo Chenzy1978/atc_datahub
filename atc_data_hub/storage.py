@@ -129,7 +129,7 @@ class StorageManager:
         path = month_dir / f"FPLN{day:%Y%m%d}.csv"
         rows: list[list[str]] = [list(FPLN_HEADERS)]
         plans = sorted(
-            flight_plans,
+            (p for p in flight_plans if not p.cancelled),  # 排除 CNL（已取消）的航班
             key=lambda item: (
                 item.callsign,
                 item.adep,

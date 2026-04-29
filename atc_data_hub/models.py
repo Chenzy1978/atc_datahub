@@ -248,6 +248,7 @@ class FlightPlan:
     terminal_exit_time: datetime | None = None   # 最后一次离开终端区时间（UTC）
     procedure: str = ""   # 飞行程序代号（SID 或 STAR），从 CAT062 获取
     runway: str = ""      # 使用跑道，从 CAT062 获取
+    cancelled: bool = False  # CNL（取消）标志
 
     @property
     def key(self) -> tuple[str, str, str, date | None]:
@@ -288,6 +289,8 @@ class FlightPlan:
             self.etd = other.etd or self.etd
             if self.eet_minutes and self.etd:
                 self.eta = self.etd + timedelta(minutes=self.eet_minutes)
+        elif action == "CNL":
+            self.cancelled = True
         else:
             self.etd = other.etd or self.etd
             self.atd = other.atd or self.atd
@@ -317,6 +320,7 @@ class FlightPlan:
             "terminal_exit_time": format_datetime(self.terminal_exit_time),
             "procedure": self.procedure,
             "runway": self.runway,
+            "cancelled": self.cancelled,
         }
 
     @classmethod
@@ -343,6 +347,7 @@ class FlightPlan:
             terminal_exit_time=parse_datetime(raw.get("terminal_exit_time")),
             procedure=str(raw.get("procedure", "")),
             runway=str(raw.get("runway", "")),
+            cancelled=bool(raw.get("cancelled", False)),
         )
 
 
